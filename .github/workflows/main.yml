@@ -1,0 +1,37 @@
+name: PcComponentes Bronze Scraper
+
+# 1. Cuándo se ejecuta
+on:
+  schedule:
+    - cron: '0 9 * * 1' # Todos los lunes a las 09:00 AM
+  workflow_dispatch:   # Esto añade un botón para que tú lo lances cuando quieras
+
+jobs:
+  scraper-job:
+    runs-on: ubuntu-latest # Usamos Linux
+
+    steps:
+      - name: Descargar el código del repo
+        uses: actions/checkout@v3
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Instalar Google Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Instalar librerías de Python
+        run: |
+          pip install pandas boto3 undetected-chromedriver selenium
+
+      - name: 🚀 Ejecutar Scraper Ninja
+        env:
+          # Aquí es donde GitHub coge tus Secrets y se los pasa al código
+          AWS_ACCESS_KEY_ID: ${{ secrets.AKIAX7WPE6HKYUFS2T2J }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.uMZK2jAnyJB9uyWArJTpiA+Q+mQnsK7OVoI7AcQW }}
+          MY_S3_BUCKET: ${{ secrets.github-actions-scraper }}
+        run: python aws_github/main.py # <-- ASEGÚRATE DE QUE SE LLAME ASÍ TU ARCHIVO
