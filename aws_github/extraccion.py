@@ -46,7 +46,8 @@ def extraer_datos_pccom_api():
                             "Precio_Actual": producto.get('price', 0),
                             "Precio_Original": producto.get('referencePrice', 0),
                             "Descuento": producto.get('discount', 0),
-                            "Valoracion": producto.get('rating', 'N/A'),
+                            "Valoracion": producto.get('ratingAvg', 'N/A'),
+                            "Opiniones": producto.get('ratingCount', '0'),
                             "URL": "https://www.pccomponentes.com" + producto.get('url', ''),
                             "Fecha": time.strftime("%Y-%m-%d %H:%M:%S")
                         })
