@@ -1,4 +1,20 @@
-steps:
+name: PcComponentes Bronze Scraper
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  scraper-job:
+    runs-on: ubuntu-latest
+    
+    # 🔥 ESTO ES LO QUE FALTABA: Forzar a que trabaje dentro de tu carpeta
+    defaults:
+      run:
+        working-directory: aws_github
+
+    steps:
       - name: Descargar el código del repo
         uses: actions/checkout@v3
 
