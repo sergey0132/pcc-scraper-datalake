@@ -63,7 +63,7 @@ def extraer_datos_pccom():
             time.sleep(2) # Respiro extra antes de extraer
 
             # Buscamos todos los productos en la página actual ¡Ahora sí estarán todos!
-            productos = driver.find_elements(By.CSS_SELECTOR, '[class="container-iTDhwB product-card productCard-Y_mbUE"]')
+            productos = driver.find_elements(By.CSS_SELECTOR, "article.product-card, div.product-card")
             print(f"🔍 Se encontraron {len(productos)} productos listos para extraer.")
 
             # BUCLE DE EXTRACCIÓN
