@@ -1,14 +1,17 @@
 name: PcComponentes Bronze Scraper
 
-# 1. Cuándo se ejecuta
 on:
   schedule:
     - cron: '0 9 * * 1' # Todos los lunes a las 09:00 AM
-  workflow_dispatch:   # Esto añade un botón para que tú lo lances cuando quieras
+  workflow_dispatch:   # Botón manual
 
 jobs:
   scraper-job:
-    runs-on: ubuntu-latest # Usamos Linux
+    runs-on: ubuntu-latest
+    # ESTO ES LA CLAVE: Le dice a GitHub que todo pase dentro de tu carpeta
+    defaults:
+      run:
+        working-directory: aws_github
 
     steps:
       - name: Descargar el código del repo
@@ -24,14 +27,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: Instalar librerías de Python
-        run: |
-          pip install pandas boto3 undetected-chromedriver selenium
+      - name: Instalar librerías
+        # Como ya estamos dentro de la carpeta, usamos tu archivo de requisitos
+        run: pip install -r requirements.txt
 
       - name: 🚀 Ejecutar Scraper Ninja
         env:
-          # Aquí es donde GitHub coge tus Secrets y se los pasa al código
-          AWS_ACCESS_KEY_ID: ${{ secrets.AKIAX7WPE6HKYUFS2T2J }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.uMZK2jAnyJB9uyWArJTpiA+Q+mQnsK7OVoI7AcQW }}
-          MY_S3_BUCKET: ${{ secrets.github-actions-scraper }}
-        run: python aws_github/main.py # <-- ASEGÚRATE DE QUE SE LLAME ASÍ TU ARCHIVO
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          MY_S3_BUCKET: ${{ secrets.MY_S3_BUCKET }}
+        # Ahora solo ponemos main.py porque el robot ya está "dentro" de aws_github
+        run: python main.py
