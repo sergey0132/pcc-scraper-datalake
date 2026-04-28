@@ -16,7 +16,7 @@ def extraer_datos_pccom_api():
         intentos = 0
 
         while not exito and intentos < 3: 
-            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fpage%3D{page}'
+            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fsort%3Ddiscount%26page%3D{page}'
             
             cabeceras_tienda = {
                 "x-selected-language": "es",
