@@ -19,7 +19,7 @@ def extraer_datos_pccom():
     datos = []
 
     # 1. DEFINIMOS LA URL
-    url_objetivo = "https://www.pccomponentes.com/ofertas-especiales?sort=discount"
+    url_objetivo = 'https://www.pccomponentes.com/ofertas-especiales'
 
     try:
         # 2. ENTRAMOS A LA PÁGINA
@@ -30,26 +30,7 @@ def extraer_datos_pccom():
 
         # ---------------------------------------------------------
         # MODO HACKER: NAVEGACIÓN CON JAVASCRIPT
-        # ---------------------------------------------------------
-        
-        # PASO A: Abrir el menú de categorías
-        boton_menu = wait.until(EC.presence_of_element_located((By.ID, "menu-btn-text"))) 
-        driver.execute_script("arguments[0].click();", boton_menu)
-        print("✅ Menú abierto (JS)")
-        time.sleep(2) 
-
-        # PASO B: Clic en el botón general de Ofertas
-        boton_ofertas = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid='normal-link']")))
-        driver.execute_script("arguments[0].click();", boton_ofertas)
-        print("✅ Entrando a sección Ofertas (JS)")
-        time.sleep(2)
-
-        # PASO C: Clic en el banner des ofertas especiales
-        selector_acer = 'a[href="/ofertas-especiales"]'
-        boton_acer = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector_acer)))
-        driver.execute_script("arguments[0].click();", boton_acer)
-        print("✅ Entrando a Acer Week (JS)")
-        time.sleep(3) 
+        # --------------------------------------------------------- 
 
         # PASO D: Abrir el desplegable de ordenar
         boton_ordenar = wait.until(EC.presence_of_element_located((By.ID, "sort-select-listbox")))
