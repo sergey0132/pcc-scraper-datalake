@@ -1,184 +1,102 @@
 import os
 import time
-import json
+from curl_cffi import requests
 import pandas as pd
-import boto3
-import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from configurar_driver import configurar_driver
-from subir_s3 import subir_a_s3, S3_BUCKET_NAME
+import boto3 # Necesario para conectarse a S3
 
-
-
-
-# --- LÓGICA DE SCRAPING ---
-def extraer_datos_pccom():
-    driver = configurar_driver()
-    datos = []
-
-    # 1. DEFINIMOS LA URL
-    url_objetivo = 'https://www.pccomponentes.com/ofertas-especiales'
+# --- FUNCIÓN DE SUBIR A S3 ---
+def subir_a_s3(archivo_local, bucket, carpeta):
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+        aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY')
+    )
+    ruta_s3 = f"{carpeta}/{archivo_local}"
     try:
-        # Buscamos el botón de aceptar cookies por su ID común en PcCom
-        cookies_button = wait.until(EC.element_to_be_clickable((By.ID, "denied-cookies")))
-        cookies_button.click()
-        print("✅ Cookies rechazadas (para limpiar la vista)")
-    except:
-        print("ℹ️ No se encontró banner de cookies o ya estaba cerrado.")
+        s3.upload_file(archivo_local, bucket, ruta_s3)
+        print(f"☁️ ¡Subido a S3 con éxito!: s3://{bucket}/{ruta_s3}")
+    except Exception as e:
+        print(f"❌ Error al subir a S3: {e}")
 
-    try:
-        # 2. ENTRAMOS A LA PÁGINA
-        driver.get(url_objetivo)
+# --- FUNCIÓN DE EXTRACCIÓN (API) ---
+def extraer_datos_pccom_api():
+    bag_products = []
+    identidades = ["chrome110", "chrome116", "chrome120", "chrome101"]
 
-        # 3. CREAMOS EL "ESPERADOR"
-        wait = WebDriverWait(driver, 15) # Espera máxima de 15 segundos para cada elemento
+    for page in range(1, 6):
+        print(f"\n--- 📄 EXTRAYENDO PÁGINA {page} VIA API ---")
+        exito = False
+        intentos = 0
 
-        # ---------------------------------------------------------
-        # MODO HACKER: NAVEGACIÓN CON JAVASCRIPT
-        # --------------------------------------------------------- 
-
-        # PASO D: Abrir el desplegable de ordenar
-        try:
-            print("⚖️ Intentando ordenar...")
-            boton_ordenar = wait.until(EC.presence_of_element_located((By.ID, "sort-select-listbox")))
-            driver.execute_script("arguments[0].click();", boton_ordenar)
+        while not exito and intentos < 3: 
+            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fpage%3D{page}'
             
-            boton_oferta = wait.until(EC.presence_of_element_located((By.ID, "sort-option-discount")))
-            driver.execute_script("arguments[0].click();", boton_oferta)
-            print("✅ Ordenado por descuento.")
-            time.sleep(3)
-        except Exception as e:
-            print(f"⚠️ No se pudo ordenar, pero seguimos adelante: {e}")
-            # Aquí NO hacemos raise e, así el código continúa con la extracción
+            cabeceras_tienda = {
+                "x-selected-language": "es",
+                "x-channel": "e24bd484-e84d-4051-8c51-551bf17a0610",
+                "Accept": "application/json, text/plain, */*",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Referer": "https://www.pccomponentes.com/ofertas-especiales",
+                "Origin": "https://www.pccomponentes.com",
+            }
 
-        # ---------------------------------------------------------
-        # 🔄 BUCLE DE PAGINACIÓN (Empezamos a navegar por páginas)
-        # ---------------------------------------------------------
-        max_paginas = 5 # Cambia este número si quieres extraer más o menos páginas
+            try:
+                print(f"🕵️ Intentando conexión (Identidad: {identidades[intentos % len(identidades)]})...")
+                repuesta = requests.get(
+                    url_api_change,
+                    impersonate=identidades[intentos % len(identidades)], 
+                    headers=cabeceras_tienda,
+                    timeout=15 
+                )
 
-        for pagina in range(1, max_paginas + 1):
-            print(f"\n--- 📄 EXTRAYENDO PÁGINA {pagina} ---")
-
-            # 🔥 CAMBIO CLAVE: HACEMOS SCROLL PRIMERO PARA FORZAR LA CARGA 🔥
-            print("⏬ Haciendo scroll inicial para cargar todos los productos (Lazy Loading)...")
-            for i in range(1, 5):
-                driver.execute_script(f"window.scrollTo(0, document.body.scrollHeight * ({i}/4));")
-                time.sleep(1) # Esperamos 1 segundo por cada "bajón" para que las fotos carguen
-            
-            time.sleep(2) # Respiro extra antes de extraer
-            
-            # Buscamos cualquier elemento que CONTENGA la clase 'product-card'
-            productos = driver.find_elements(By.CSS_SELECTOR, "article.product-card, div[class*='product-card']")
-            print(f"🔍 Se encontraron {len(productos)} productos reales.")
-
-            # BUCLE DE EXTRACCIÓN
-            for p in productos:
-                try:
-                    nombre = p.find_element(By.CSS_SELECTOR, "h3").text 
-                    precio_actual = p.find_element(By.CSS_SELECTOR, "[data-e2e='price-card']").text
-                    precio_original = p.find_element(By.CSS_SELECTOR, "[data-e2e='crossedPrice']").text
-
-                    try:
-                        descuento = p.find_element(By.CSS_SELECTOR, "[class='discountContainer-JoBi1P']").text
-                    except:
-                        descuento = "Sin descuento"
-
-                    try:
-                        rating = p.find_element(By.CSS_SELECTOR, "[class='rating-module_text__WmVxK rating-module_bold__FFtZp']").text
-                    except:
-                        rating = "N/A"
+                if repuesta.status_code == 200:
+                    date = repuesta.json()
+                    lista_articles = date.get('dynamicData', {}).get('articles', [])
                     
-                    try:
-                        opiniones = p.find_element(By.CSS_SELECTOR, "[class='rating-module_text__WmVxK']").text
-                    except:
-                        opiniones = "N/A"
-                        # 5. Extraer la URL de la Imagen
-                    try:
-                        # Buscamos la etiqueta de imagen y sacamos su enlace (src)
-                        imagen_url = p.find_element(By.CSS_SELECTOR, "img").get_attribute("src")
-                    except:
-                        imagen_url = "Sin imagen"
-
-                    # --- INICIO BLOQUE URL NINJA ---
-                    url_producto = "Sin URL" # Por defecto
-                    url_bruta = None
+                    for producto in lista_articles:
+                        bag_products.append({
+                            "Nombre": producto.get('name', 'Sin nombre'),
+                            "Precio_Actual": producto.get('price', 0),
+                            "Precio_Original": producto.get('referencePrice', 0),
+                            "Descuento": producto.get('discount', 0),
+                            "Valoracion": producto.get('rating', 'N/A'),
+                            "URL": "https://www.pccomponentes.com" + producto.get('url', ''),
+                            "Fecha": time.strftime("%Y-%m-%d %H:%M:%S")
+                        })
                     
-                    # --- INICIO BLOQUE URL JAVASCRIPT ---
-                    try:
-                        # Buscamos hacia arriba (ancestro) la primera etiqueta a
-                        elemento_enlace = p.find_element(By.XPATH, "./ancestor::a | .//a[@href]")
-                        url_bruta = elemento_enlace.get_attribute("href")
-                        
-                        if url_bruta:
-                            if url_bruta.startswith("/"):
-                                url_producto = "https://www.pccomponentes.com" + url_bruta
-                            else:
-                                url_producto = url_bruta
-                        else:
-                            url_producto = "Sin URL"
-                    except Exception as e:
-                        url_producto = "Sin URL"
+                    print(f"✅ ¡Éxito! Extraídos {len(lista_articles)} productos.")
+                    exito = True
+                else:
+                    print(f"⚠️ Código {repuesta.status_code}. Reintentando...")
+                    intentos += 1
+                    time.sleep(5)
+            except Exception as e:
+                print(f"❌ Error en la conexión: {e}")
+                intentos += 1
+                time.sleep(5)
 
-                    # Guardamos todo en la lista de datos
-                    datos.append({
-                        "Nombre": nombre,
-                        "Precio_Actual" : precio_actual,
-                        "Precio_Original": precio_original,
-                        "Descuento": descuento,
-                        "Valoracion": rating,
-                        "Opiniones": opiniones,
-                        "Imagen_URL": imagen_url,
-                        "Fecha": time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "URL" : url_producto
-                    })
-                except Exception as e:
-                    print(f"⚠️ Error al extraer un producto: {e}")
-
-                    # ---------------------------------------------------------
-                    # PASAR A LA SIGUIENTE PÁGINA
-                    # ---------------------------------------------------------
-                    if pagina < max_paginas:
-                        try:
-                            print("➡️ Buscando el botón de Siguiente...")
-                            selector_siguiente = '[data-testid="icon_right"]'
-                            boton_siguiente = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector_siguiente)))
-                            
-                            # Nos aseguramos de estar viendo el botón
-                            print("⏬ Centrando el botón en pantalla...")
-                            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", boton_siguiente)
-                            time.sleep(2) 
-                            
-                            # CLIC HACKER
-                            driver.execute_script("arguments[0].click();", boton_siguiente)
-                            print(f"✅ Clic en 'Siguiente' realizado. Cargando página {pagina + 1}...")
-                            
-                            # Tiempo para que la nueva web cargue completa antes de volver a empezar el bucle
-                            time.sleep(4) 
-                            
-                        except Exception as e:
-                            print("🛑 No se encontró el botón de Siguiente. Llegamos al final de los resultados.")
-                            break
-
-    finally:
-        # Cerramos el navegador
-        driver.quit()
-        
-    return datos
+        time.sleep(3) 
+    return bag_products
 
 # --- FLUJO PRINCIPAL ---
 if __name__ == "__main__":
-    lista_productos = extraer_datos_pccom()
+    print("🚀 Iniciando extracción ninja (API)...")
+    lista_productos = extraer_datos_pccom_api()
     
     if lista_productos:
         df = pd.DataFrame(lista_productos)
-        
-        # Guardamos local y subimos a la carpeta BRONZE
         filename = f"pcc_offers_{time.strftime('%Y%m%d_%H%M%S')}.csv"
         df.to_csv(filename, index=False)
+        print(f"💾 Guardado localmente como {filename}")
         
-        # Subimos a S3 (Asegúrate de tener la carpeta 'bronze' creada en tu bucket)
-        subir_a_s3(filename, S3_BUCKET_NAME, "bronze")
+        # Leemos el nombre del bucket de los secretos de GitHub
+        S3_BUCKET_NAME = os.environ.get("MY_S3_BUCKET")
         
-        print(f"🏁 Scraping exitoso. {len(df)} productos en la capa Bronze.")
+        if S3_BUCKET_NAME:
+            subir_a_s3(filename, S3_BUCKET_NAME, "bronze")
+        else:
+            print("❌ Error: No se encontró la variable MY_S3_BUCKET.")
+            
+        print(f"🏁 Scraping exitoso. {len(df)} productos recolectados en total.")
+    else:
+        print("⚠️ No se obtuvieron datos finales.")
