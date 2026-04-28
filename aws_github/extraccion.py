@@ -19,7 +19,7 @@ def extraer_datos_pccom():
     datos = []
 
     # 1. DEFINIMOS LA URL
-    url_objetivo = "https://www.pccomponentes.com/?utm_source=1042425&utm_medium=afi&utm_campaign=opera.com&sv1=affiliate&sv_campaign_id=1042425&awc=20982_1776714249_f8b7816b2dd3cfe7d28b1d382831ac84&utm_term=deeplink&utm_content=gx-es-awin-pccomponentes-sd-def"
+    url_objetivo = "https://www.pccomponentes.com/ofertas-especiales?sort=discount"
 
     try:
         # 2. ENTRAMOS A LA PÁGINA
