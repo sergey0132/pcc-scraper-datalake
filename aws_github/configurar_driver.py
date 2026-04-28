@@ -1,19 +1,28 @@
 import undetected_chromedriver as uc
+import subprocess
+import re
+
+def get_chrome_version():
+    # Truco para saber qué versión real de Chrome hay instalada en el sistema
+    try:
+        version = subprocess.check_output(['google-chrome', '--version']).decode('utf-8')
+        # Extraemos solo el número principal (ej: 147)
+        return int(re.search(r'Google Chrome (\d+)', version).group(1))
+    except:
+        return None
 
 def configurar_driver():
-    # Usamos las opciones especiales del driver indetectable
     options = uc.ChromeOptions()
     
-    # 💡 TRUCO PRO: Cuando luchas contra Cloudflare, es mejor que el navegador 
-    # SE VEA (no usar modo headless/oculto) al menos las primeras veces.
     options.add_argument('--headless') 
     options.add_argument('--no-sandbox')
-    
-    # Desactivamos el popup molesto de "Chrome está siendo controlado..."
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument("--disable-blink-features=AutomationControlled") 
 
-    # Inicializamos el navegador "Ninja"
-    driver = uc.Chrome(options=options)
+    # Intentamos detectar la versión del sistema para que no haya fallos
+    version_principal = get_chrome_version()
+
+    # Inicializamos el navegador pasando la versión exacta que encontramos
+    driver = uc.Chrome(options=options, version_main=version_principal)
     
     return driver
