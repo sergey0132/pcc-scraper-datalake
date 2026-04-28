@@ -1,6 +1,6 @@
 import time
 import pandas as pd
-from extraccion import extraer_datos_pccom
+from extraccion import extraer_datos_pccom_api
 from subir_s3 import subir_a_s3
 import os
 
