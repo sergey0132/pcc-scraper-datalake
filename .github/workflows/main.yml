@@ -1,19 +1,4 @@
-name: PcComponentes Bronze Scraper
-
-on:
-  schedule:
-    - cron: '0 9 * * 1' # Todos los lunes a las 09:00 AM
-  workflow_dispatch:   # Botón manual
-
-jobs:
-  scraper-job:
-    runs-on: ubuntu-latest
-    # ESTO ES LA CLAVE: Le dice a GitHub que todo pase dentro de tu carpeta
-    defaults:
-      run:
-        working-directory: aws_github
-
-    steps:
+steps:
       - name: Descargar el código del repo
         uses: actions/checkout@v3
 
@@ -22,15 +7,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar Google Chrome
-        run: |
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-
       - name: Instalar librerías
-        # Como ya estamos dentro de la carpeta, usamos tu archivo de requisitos
         run: pip install -r requirements.txt
 
       - name: 🚀 Ejecutar Scraper Ninja
@@ -38,13 +15,4 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           MY_S3_BUCKET: ${{ secrets.MY_S3_BUCKET }}
-        # Ahora solo ponemos main.py porque el robot ya está "dentro" de aws_github
         run: python main.py
-
-        # Añade esto después del paso de "Ejecutar Scraper"
-      - name: Guardar captura de pantalla si hay error
-        if: always() # Esto hace que se ejecute aunque el script falle
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: aws_github/debug_screenshot.png
