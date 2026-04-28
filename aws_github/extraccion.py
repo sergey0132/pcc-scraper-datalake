@@ -33,16 +33,18 @@ def extraer_datos_pccom():
         # --------------------------------------------------------- 
 
         # PASO D: Abrir el desplegable de ordenar
-        boton_ordenar = wait.until(EC.presence_of_element_located((By.ID, "sort-select-listbox")))
-        driver.execute_script("arguments[0].click();", boton_ordenar)
-        print("✅ Desplegable de orden abierto (JS)")
-        time.sleep(1)
-
-        # PASO E: Seleccionar "Mayor descuento"
-        boton_oferta = wait.until(EC.presence_of_element_located((By.ID, "sort-option-discount")))
-        driver.execute_script("arguments[0].click();", boton_oferta)
-        print("✅ Ordenando por descuento (JS)")
-        time.sleep(3) 
+        try:
+            print("⚖️ Intentando ordenar...")
+            boton_ordenar = wait.until(EC.presence_of_element_located((By.ID, "sort-select-listbox")))
+            driver.execute_script("arguments[0].click();", boton_ordenar)
+            
+            boton_oferta = wait.until(EC.presence_of_element_located((By.ID, "sort-option-discount")))
+            driver.execute_script("arguments[0].click();", boton_oferta)
+            print("✅ Ordenado por descuento.")
+            time.sleep(3)
+        except Exception as e:
+            print(f"⚠️ No se pudo ordenar, pero seguimos adelante: {e}")
+            # Aquí NO hacemos raise e, así el código continúa con la extracción
 
         # ---------------------------------------------------------
         # 🔄 BUCLE DE PAGINACIÓN (Empezamos a navegar por páginas)
