@@ -8,7 +8,7 @@ if __name__ == "__main__":
     print("🚀 Iniciando el proceso completo...")
     
     # 1. Extraer
-    lista_productos = extraer_datos_pccom()
+    lista_productos = extraer_datos_pccom_api()
     
     if lista_productos:
         # 2. Procesar a DataFrame
