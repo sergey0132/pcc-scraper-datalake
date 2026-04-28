@@ -14,7 +14,7 @@ from subir_s3 import subir_a_s3, S3_BUCKET_NAME
 
 
 # --- LÓGICA DE SCRAPING ---
-def extraer_datos_pccom(url_objetivo):
+def extraer_datos_pccom():
     driver = configurar_driver()
     datos = []
 
