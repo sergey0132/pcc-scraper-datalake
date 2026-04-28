@@ -40,3 +40,11 @@ jobs:
           MY_S3_BUCKET: ${{ secrets.MY_S3_BUCKET }}
         # Ahora solo ponemos main.py porque el robot ya está "dentro" de aws_github
         run: python main.py
+
+        # Añade esto después del paso de "Ejecutar Scraper"
+      - name: Guardar captura de pantalla si hay error
+        if: always() # Esto hace que se ejecute aunque el script falle
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: aws_github/debug_screenshot.png
