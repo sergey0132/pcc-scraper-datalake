@@ -3,13 +3,12 @@ import pandas as pd
 from extraccion import extraer_datos_pccom
 from subir_s3 import subir_a_s3
 import os
-from extraccion import url_objetivo
 
 if __name__ == "__main__":
     print("🚀 Iniciando el proceso completo...")
     
     # 1. Extraer
-    lista_productos = extraer_datos_pccom(url_objetivo)
+    lista_productos = extraer_datos_pccom()
     
     if lista_productos:
         # 2. Procesar a DataFrame
