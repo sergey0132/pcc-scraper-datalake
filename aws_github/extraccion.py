@@ -20,6 +20,13 @@ def extraer_datos_pccom():
 
     # 1. DEFINIMOS LA URL
     url_objetivo = 'https://www.pccomponentes.com/ofertas-especiales'
+    try:
+        # Buscamos el botón de aceptar cookies por su ID común en PcCom
+        cookies_button = wait.until(EC.element_to_be_clickable((By.ID, "denied-cookies")))
+        cookies_button.click()
+        print("✅ Cookies rechazadas (para limpiar la vista)")
+    except:
+        print("ℹ️ No se encontró banner de cookies o ya estaba cerrado.")
 
     try:
         # 2. ENTRAMOS A LA PÁGINA
@@ -61,10 +68,10 @@ def extraer_datos_pccom():
                 time.sleep(1) # Esperamos 1 segundo por cada "bajón" para que las fotos carguen
             
             time.sleep(2) # Respiro extra antes de extraer
-
-            # Buscamos todos los productos en la página actual ¡Ahora sí estarán todos!
-            productos = driver.find_elements(By.CSS_SELECTOR, "article.product-card, div.product-card")
-            print(f"🔍 Se encontraron {len(productos)} productos listos para extraer.")
+            
+            # Buscamos cualquier elemento que CONTENGA la clase 'product-card'
+            productos = driver.find_elements(By.CSS_SELECTOR, "article.product-card, div[class*='product-card']")
+            print(f"🔍 Se encontraron {len(productos)} productos reales.")
 
             # BUCLE DE EXTRACCIÓN
             for p in productos:
