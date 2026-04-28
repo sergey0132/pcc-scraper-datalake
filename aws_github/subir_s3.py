@@ -9,17 +9,16 @@ AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_REGION = "us-east-1" # O la región donde esté tu bucket
 
 
-def subir_a_s3(file_name, bucket, object_name=None):
-
-    """Sube el archivo CSV a la capa Bronze de S3"""
-    s3_client = boto3.client(
+# --- FUNCIÓN DE SUBIR A S3 ---
+def subir_a_s3(archivo_local, bucket, carpeta):
+    s3 = boto3.client(
         's3',
-        aws_access_key_id=AWS_ACCESS_KEY,
-        aws_secret_access_key=AWS_SECRET_KEY,
-        region_name=AWS_REGION
+        aws_access_key_id=os.environ.get('AWS_ACCESS_KEY_ID'),
+        aws_secret_access_key=os.environ.get('AWS_SECRET_ACCESS_KEY')
     )
+    ruta_s3 = f"{carpeta}/{archivo_local}"
     try:
-        s3_client.upload_file(file_name, bucket, object_name or file_name)
-        print(f"✅ Archivo subido con éxito a s3://{bucket}/{object_name}")
+        s3.upload_file(archivo_local, bucket, ruta_s3)
+        print(f"☁️ ¡Subido a S3 con éxito!: s3://{bucket}/{ruta_s3}")
     except Exception as e:
         print(f"❌ Error al subir a S3: {e}")
