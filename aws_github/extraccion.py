@@ -2,20 +2,29 @@ import os
 import time
 from curl_cffi import requests
 import pandas as pd
+import random
 import boto3 # Necesario para conectarse a S3
 
 
-# --- FUNCIÓN DE EXTRACCIÓN (API) ---
 def extraer_datos_pccom_api():
     bag_products = []
-    identidades = ["chrome110", "chrome116", "chrome120", "chrome101"]
+    
+    # 1. EL GRAN ARMARIO DE DISFRACES (Chrome, Edge y Safari)
+    identidades = [
+        "chrome120", "chrome119", "chrome116", 
+        "edge101", "edge99", 
+        "safari17_0", "safari15_5"
+    ]
 
     for page in range(1, 6):
         print(f"\n--- 📄 EXTRAYENDO PÁGINA {page} VIA API ---")
         exito = False
         intentos = 0
+        
+        # 2. MEZCLAMOS LAS IDENTIDADES PARA CADA PÁGINA
+        random.shuffle(identidades) 
 
-        while not exito and intentos < 3: 
+        while not exito and intentos < 4: 
             url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fsort%3Ddiscount%26page%3D{page}'
             
             cabeceras_tienda = {
@@ -28,10 +37,12 @@ def extraer_datos_pccom_api():
             }
 
             try:
-                print(f"🕵️ Intentando conexión (Identidad: {identidades[intentos % len(identidades)]})...")
+                identidad_actual = identidades[intentos % len(identidades)]
+                print(f"🕵️ Intentando conexión (Identidad: {identidad_actual})...")
+                
                 repuesta = requests.get(
                     url_api_change,
-                    impersonate=identidades[intentos % len(identidades)], 
+                    impersonate=identidad_actual, 
                     headers=cabeceras_tienda,
                     timeout=15 
                 )
@@ -46,24 +57,31 @@ def extraer_datos_pccom_api():
                             "Precio_Actual": producto.get('price', 0),
                             "Precio_Original": producto.get('referencePrice', 0),
                             "Descuento": producto.get('discount', 0),
-                            "Valoracion": producto.get('ratingAvg', 'N/A'),
-                            "Opiniones": producto.get('ratingCount', '0'),
+                            "Valoracion": producto.get('ratingAvg', 'N/A'),     # Modificado
+                            "Opiniones": producto.get('ratingCount', '0'),      # Modificado
                             "URL": "https://www.pccomponentes.com" + producto.get('url', ''),
                             "Fecha": time.strftime("%Y-%m-%d %H:%M:%S")
                         })
                     
-                    print(f"✅ ¡Éxito! Extraídos {len(lista_articles)} productos.")
+                    print(f"✅ ¡Éxito! Extraídos {len(lista_articles)} productos de la página {page}.")
                     exito = True
                 else:
                     print(f"⚠️ Código {repuesta.status_code}. Reintentando...")
                     intentos += 1
-                    time.sleep(5)
+                    time.sleep(6) # Pausa corta entre reintentos fallidos
+            
             except Exception as e:
                 print(f"❌ Error en la conexión: {e}")
                 intentos += 1
-                time.sleep(5)
+                time.sleep(6)
 
-        time.sleep(3) 
+        # 3. PAUSA ALEATORIA ENTRE PÁGINAS (Para engañar a Cloudflare)
+        # Solo hacemos la pausa si no es la última página
+        if page < 5:
+            tiempo_espera = random.randint(8, 15)
+            print(f"⏳ Descansando {tiempo_espera} segundos para enfriar la IP...")
+            time.sleep(tiempo_espera)
+
     return bag_products
 
 # --- FLUJO PRINCIPAL ---
