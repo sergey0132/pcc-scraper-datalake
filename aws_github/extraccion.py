@@ -52,16 +52,12 @@ def extraer_datos_pccom_api():
                     lista_articles = date.get('dynamicData', {}).get('articles', [])
                     
                     for producto in lista_articles:
-                        bag_products.append({
-                            "Nombre": producto.get('name', 'Sin nombre'),
-                            "Precio_Actual": producto.get('price', 0),
-                            "Precio_Original": producto.get('referencePrice', 0),
-                            "Descuento": producto.get('discount', 0),
-                            "Valoracion": producto.get('ratingAvg', 'N/A'),     # Modificado
-                            "Opiniones": producto.get('ratingCount', '0'),      # Modificado
-                            "URL": "https://www.pccomponentes.com" + producto.get('url', ''),
-                            "Fecha": time.strftime("%Y-%m-%d %H:%M:%S")
-                        })
+                        # 1. Le inyectamos la fecha actual al diccionario original 
+                        # (Esto es vital para saber cuándo sacamos la foto a los datos)
+                        producto['Fecha_Extraccion'] = time.strftime("%Y-%m-%d %H:%M:%S")
+                        
+                        # 2. Añadimos el producto COMPLETO a nuestra bolsa
+                        bag_products.append(producto)
                     
                     print(f"✅ ¡Éxito! Extraídos {len(lista_articles)} productos de la página {page}.")
                     exito = True
