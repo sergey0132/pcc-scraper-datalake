@@ -1,0 +1,277 @@
+#CODIGO LIMPIEZA:
+
+import json
+import urllib.parse
+import boto3
+import pandas as pd
+import io
+import ast
+
+# 1. Conectamos con S3
+s3_client = boto3.client('s3')
+
+# 🛡️ Función escudo: Evita que Lambda se rompa si PcComponentes envía un dato nulo o raro
+def safe_eval(val):
+    try:
+        return ast.literal_eval(str(val))
+    except (ValueError, SyntaxError, TypeError):
+        return {}
+
+def lambda_handler(event, context):
+    try:
+        # ==========================================
+        # 1. SABER QUÉ ARCHIVO DESPERTÓ A LA LAMBDA
+        # ==========================================
+        bucket_origen = event['Records'][0]['s3']['bucket']['name']
+        archivo_key = urllib.parse.unquote_plus(event['Records'][0]['s3']['object']['key'])
+        
+        # Filtro de seguridad: Solo actuamos si el archivo está en la carpeta 'bronze'
+        if not archivo_key.startswith("bronze/"):
+            print(f"Ignorando archivo fuera de la capa bronze: {archivo_key}")
+            return {'statusCode': 200, 'body': 'Ignorado (No es capa Bronze)'}
+            
+        print(f"📥 Descargando a la memoria: {archivo_key}")
+
+        # ==========================================
+        # 2. LEER DATOS CRUDOS DESDE S3
+        # ==========================================
+        respuesta_s3 = s3_client.get_object(Bucket=bucket_origen, Key=archivo_key)
+        datos_crudos = respuesta_s3['Body'].read()
+        
+        # Leemos el CSV directamente en la memoria RAM de Lambda
+        df_bronze = pd.read_csv(io.BytesIO(datos_crudos))
+
+        # ==========================================
+        # 3. 🧼 PROCESO DE LIMPIEZA (CAPA SILVER)
+        # ==========================================
+        columnas_deseadas = {
+            'name': 'Nombre',
+            'price': 'Precio_Actual',
+            'referencePrice': 'Precio_Original',
+            'discount': 'Descuento',
+            'ratingAvg': 'Valoracion',
+            'ratingCount': 'Opiniones',
+            'mainCategory': 'Categoria',     
+            'slug': 'Ruta_Producto',         
+            'Fecha_Extraccion': 'Fecha',
+            'wishListCounter': 'Interesados_Wishlist', 
+            'visitsLast30Days': 'Visitas_Mensuales',   
+            'isPcCom': 'Vendido_Por_PcCom'             
+        }
+
+        # Filtramos y renombramos
+        columnas_presentes = [col for col in columnas_deseadas.keys() if col in df_bronze.columns]
+        df_silver = df_bronze[columnas_presentes].rename(columns=columnas_deseadas)
+
+        # Arreglar la URL completa
+        if 'Ruta_Producto' in df_silver.columns:
+            df_silver['URL_Completa'] = "https://www.pccomponentes.com/" + df_silver['Ruta_Producto'].astype(str)
+            df_silver = df_silver.drop(columns=['Ruta_Producto'])
+
+        # Limpieza de nulos y formatos de fecha
+        df_silver['Valoracion'] = df_silver['Valoracion'].fillna(0)
+        df_silver['Fecha'] = pd.to_datetime(df_silver['Fecha'], errors='coerce')
+        df_silver['Hora'] = df_silver['Fecha'].dt.time
+        df_silver['Fecha'] = df_silver['Fecha'].dt.date
+
+        # Ordenar (Cazachollos)
+        df_silver.sort_values(
+            by=['Descuento', 'Precio_Actual', 'Valoracion'], 
+            ascending=[False, True, False], 
+            inplace=True
+        )
+
+        # Extraer Diccionario de Categorías usando nuestra función escudo (safe_eval)
+        df_silver['Categoria'] = df_silver['Categoria'].apply(safe_eval)
+
+        # Extraer nombre y slug
+        df_silver['Categoria_nombre'] = df_silver['Categoria'].apply(lambda x: x.get('name', 'Sin categoría') if isinstance(x, dict) else 'Sin categoría')
+        df_silver['Categoria_slug'] = df_silver['Categoria'].apply(lambda x: x.get('slug', 'Sin clave') if isinstance(x, dict) else 'Sin categoría')
+
+        # Borrar diccionario original
+        df_silver = df_silver.drop(columns=['Categoria'])
+
+        # ==========================================
+        # 4. GUARDAR EN S3 (CARPETA SILVER)
+        # ==========================================
+        # Cambiamos la ruta de "bronze/archivo.csv" a "silver/archivo_clean.csv"
+        nuevo_nombre = archivo_key.replace("bronze/", "silver/").replace(".csv", "_clean.csv")
+        
+        # Convertimos el DataFrame a texto CSV en la memoria
+        csv_buffer = io.StringIO()
+        df_silver.to_csv(csv_buffer, index=False)
+        
+        # Subimos el archivo final a la carpeta silver de tu bucket
+        s3_client.put_object(
+            Bucket=bucket_origen, 
+            Key=nuevo_nombre, 
+            Body=csv_buffer.getvalue()
+        )
+        
+        print(f"✅ ¡Éxito! Archivo guardado en la capa Silver: {nuevo_nombre}")
+        return {
+            'statusCode': 200, 
+            'body': json.dumps(f'Procesado correctamente: {nuevo_nombre}')
+        }
+        
+    except Exception as e:
+        print(f"❌ Error crítico procesando el archivo: {str(e)}")
+        raise e
+
+#===========================================================================================================
+
+#CODIGO BOT-TELEGRAM:
+
+import os
+import json
+import boto3
+import io
+import pandas as pd
+import telebot
+from telebot import types
+
+# 🔑 TUS CREDENCIALES
+TOKEN = 'TU-TOKEN' 
+bot = telebot.TeleBot(TOKEN, threaded=False)
+
+# ☁️ CONFIGURACIÓN S3
+NOMBRE_BUCKET = 'NOMBRE-BUCKET' 
+s3_client = boto3.client('s3')
+
+# 1. Función para cargar los datos DESDE S3 (con Caché y Radar)
+df_cache = None
+
+def cargar_datos():
+    global df_cache
+    if df_cache is not None:
+        return df_cache 
+        
+    try:
+        print("☁️ Buscando el archivo de chollos más reciente en S3...")
+        respuesta_lista = s3_client.list_objects_v2(Bucket=NOMBRE_BUCKET, Prefix='silver/')
+        archivos_csv = [archivo for archivo in respuesta_lista.get('Contents', []) if archivo['Key'].endswith('.csv')]
+        
+        if not archivos_csv:
+            print("❌ No se encontraron archivos CSV en la carpeta silver/")
+            return None
+            
+        archivos_csv.sort(key=lambda x: x['LastModified'], reverse=True)
+        archivo_mas_reciente = archivos_csv[0]['Key']
+        print(f"✅ Archivo más nuevo encontrado: {archivo_mas_reciente}")
+
+        respuesta = s3_client.get_object(Bucket=NOMBRE_BUCKET, Key=archivo_mas_reciente)
+        datos_csv = respuesta['Body'].read()
+        
+        df = pd.read_csv(io.BytesIO(datos_csv))
+        df = df.drop_duplicates(subset=['Nombre'])
+        df_cache = df 
+        return df
+        
+    except Exception as e:
+        print(f"❌ Error S3: {e}")
+        return None
+
+# 2. Menú principal (Teclado inferior)
+def crear_menu_categorias(df):
+    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    if df is not None:
+        categorias = df['Categoria_nombre'].unique().tolist()
+        botones = [types.KeyboardButton(cat) for cat in categorias]
+        markup.add(*botones)
+    return markup
+
+
+# --- 👇 AÑADIDO: ESCUCHADOR DE BOTONES INLINE 👇 ---
+@bot.callback_query_handler(func=lambda call: True)
+def procesar_botones(call):
+    chat_id = call.message.chat.id
+    datos = call.data
+    
+    df = cargar_datos()
+    
+    if datos == "menu_principal":
+        bot.answer_callback_query(call.id) 
+        bot.send_message(chat_id, "¡Aquí tienes todas las categorías!", reply_markup=crear_menu_categorias(df))
+        
+    elif datos.startswith("mas_"):
+        bot.answer_callback_query(call.id)
+        categoria = datos.replace("mas_", "")
+        
+        todas_las_ofertas = df[df['Categoria_nombre'] == categoria].sort_values(by='Descuento', ascending=False)
+        siguientes_ofertas = todas_las_ofertas.iloc[5:10]
+        
+        if siguientes_ofertas.empty:
+            bot.send_message(chat_id, "¡Vaya! Ya no hay más chollos en esta categoría. 😅", reply_markup=crear_menu_categorias(df))
+        else:
+            bot.send_message(chat_id, f"🔎 Buscando 5 chollos MÁS en *{categoria}*...", parse_mode="Markdown")
+            for _, row in siguientes_ofertas.iterrows():
+                card = (
+                        f"🔥 *{row['Nombre']}*\n\n"
+                        f"💰 *Precio:* {row['Precio_Actual']}€ ~~(Antes: {row['Precio_Original']}€)~~\n"
+                        f"📉 *Descuento:* {row['Descuento']}%\n"
+                        f"⭐ *Valoración:* {row['Valoracion']}/5\n\n"
+                        f"🔗 *[Ver en PC Componentes]*({row['URL_Completa']})"
+                    )
+                bot.send_message(chat_id, card, parse_mode="Markdown", disable_web_page_preview=False)
+            
+            markup_volver = telebot.types.InlineKeyboardMarkup()
+            btn_volver = telebot.types.InlineKeyboardButton("🏠 Volver a las categorías", callback_data="menu_principal")
+            markup_volver.add(btn_volver)
+            bot.send_message(chat_id, "Esos son todos los mejores chollos.", reply_markup=markup_volver)
+# ---------------------------------------------------
+
+
+# --- 👇 AÑADIDO: ESCUCHADOR DE MENSAJES DE TEXTO 👇 ---
+@bot.message_handler(func=lambda message: True)
+def procesar_mensaje(message):
+    chat_id = message.chat.id
+    texto_usuario = message.text
+    
+    df = cargar_datos()
+    if df is None:
+         bot.send_message(chat_id, "Lo siento, ahora mismo no puedo acceder a las ofertas. Inténtalo más tarde.")
+         return
+         
+    if texto_usuario in df['Categoria_nombre'].unique():
+        bot.send_message(chat_id, f"🔎 Buscando las mejores ofertas en *{texto_usuario}*...", parse_mode="Markdown")
+        ofertas = df[df['Categoria_nombre'] == texto_usuario].sort_values(by='Descuento', ascending=False).head(5)
+        
+        for _, row in ofertas.iterrows():
+            card = (
+                    f"🔥 *{row['Nombre']}*\n\n"
+                    f"💰 *Precio:* {row['Precio_Actual']}€ ~~(Antes: {row['Precio_Original']}€)~~\n"
+                    f"📉 *Descuento:* {row['Descuento']}%\n"
+                    f"⭐ *Valoración:* {row['Valoracion']}/5\n\n"
+                    f"🔗 *[Ver en PC Componentes]*({row['URL_Completa']})"
+                )
+            bot.send_message(chat_id, card, parse_mode="Markdown", disable_web_page_preview=False)
+        
+        markup_opciones = telebot.types.InlineKeyboardMarkup()
+        btn_mas = telebot.types.InlineKeyboardButton("➕ Ver mas ofertas", callback_data=f"mas_{texto_usuario}")
+        btn_menu = telebot.types.InlineKeyboardButton("🏠 Otras categorías", callback_data="menu_principal")
+        markup_opciones.row(btn_mas, btn_menu)
+        bot.send_message(chat_id, "¿Qué quieres hacer ahora?", reply_markup=markup_opciones)
+    else:
+        respuesta = "¡Hola! Soy tu bot de ofertas. 🤖\n\n¿Qué categoría te gustaría explorar hoy?"
+        bot.send_message(chat_id, respuesta, reply_markup=crear_menu_categorias(df))
+# ------------------------------------------------------
+
+
+# 3. Función principal (Ahora súper simplificada y segura)
+def lambda_handler(event, context):
+    print("🔔 Webhook recibido de Telegram!")
+    try:
+        cuerpo = json.loads(event['body'])
+        update = telebot.types.Update.de_json(cuerpo)
+        
+        # ⚡ ESTA LÍNEA ES LA MAGIA QUE FALTABA ⚡
+        # Le dice a Telebot: "Oye, revisa si es un mensaje o un botón y repártelo"
+        bot.process_new_updates([update])
+        
+    except Exception as e:
+        print(f"❌ Error procesando el webhook: {e}")
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Mensaje procesado con éxito')
+    }
