@@ -25,14 +25,14 @@ def extraer_datos_pccom_api():
         random.shuffle(identidades) 
 
         while not exito and intentos < 4: 
-            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fsort%3Ddiscount%26page%3D{page}'
+            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Faniversario%3Fsort%3Ddiscount%26page%3D{page}'
             
             cabeceras_tienda = {
                 "x-selected-language": "es",
                 "x-channel": "e24bd484-e84d-4051-8c51-551bf17a0610",
                 "Accept": "application/json, text/plain, */*",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Referer": "https://www.pccomponentes.com/ofertas-especiales",
+                "Referer": "https://www.pccomponentes.com/aniversario",
                 "Origin": "https://www.pccomponentes.com",
             }
 
