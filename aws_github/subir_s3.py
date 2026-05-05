@@ -4,8 +4,8 @@ import boto3
 # --- CONFIGURACIÓN DE AWS ---
 # Estos valores los configuraremos en los Secrets de GitHub
 S3_BUCKET_NAME = os.getenv('MY_S3_BUCKET')
-AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_ACCESS_KEY = os.getenv('AWS_ACCESS_KEY_ID_2')
+AWS_SECRET_KEY = os.getenv('AWS_SECRET_ACCESS_KEY_2')
 AWS_REGION = "us-east-1" # O la región donde esté tu bucket
 
 
