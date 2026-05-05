@@ -28,7 +28,7 @@ jobs:
 
       - name: 🚀 Ejecutar Scraper Ninja
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_2 }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_2 }}
           MY_S3_BUCKET: ${{ secrets.MY_S3_BUCKET }}
         run: python main.py
