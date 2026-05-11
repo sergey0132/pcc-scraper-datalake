@@ -15,8 +15,8 @@ def extraer_datos_pccom_api():
         "edge101", "edge99", 
         "safari17_0", "safari15_5"
     ]
-    # Añado mas paginas para tener 5-10 productos de cada categoria 
-    for page in range(1, 16):
+    # Añado mas paginas para tener mas productos de cada categoria 
+    for page in range(1, 101):
         print(f"\n--- 📄 EXTRAYENDO PÁGINA {page} VIA API ---")
         exito = False
         intentos = 0
