@@ -9,30 +9,12 @@ import boto3 # Necesario para conectarse a S3
 def extraer_datos_pccom_api():
     bag_products = []
     
-# 1. EL GRAN ARMARIO DE DISFRACES AMPLIADO Y COMPATIBLE (100% Operativo)
-    identidades = [
-        # --- El escudo VIP (Safari de escritorio) ---
-        "safari15_5", 
-        "safari17_0", 
-        "safari18_0",
-        
-        # --- La flota de Chrome (Versiones estables y compatibles) ---
-        "chrome124",
-        "chrome120", 
-        "chrome119", 
-        "chrome117",
-        "chrome114",
-        "chrome110",
-        
-        # --- El escuadrón Edge (Versiones estables y compatibles) ---
-        "edge120",
-        "edge114",
-        "edge101", 
-        "edge99"
-    ]
+    # --- 1. EL ALMACÉN CLASIFICADO DE DISFRACES ---
+    safaris = ["safari15_5", "safari17_0", "safari18_0"]
+    chromes = ["chrome124", "chrome120", "chrome119", "chrome117", "chrome114", "chrome110"]
+    edges = ["edge120", "edge114", "edge101", "edge99"]
     
-    # ⚡ OPTIMIZACIÓN: Sacamos las cabeceras fijas fuera de todos los bucles
-    # Eliminamos la línea del User-Agent para que curl_cffi lo ponga dinámicamente
+    # Cabeceras fijas fuera de los bucles (sin User-Agent)
     cabeceras_tienda = {
         "x-selected-language": "es",
         "x-channel": "e24bd484-e84d-4051-8c51-551bf17a0610",
@@ -41,26 +23,35 @@ def extraer_datos_pccom_api():
         "Origin": "https://www.pccomponentes.com",
     }
     
-    # Añado mas paginas para tener mas productos de cada categoria 
     for page in range(1, 101):
         print(f"\n--- 📄 EXTRAYENDO PÁGINA {page} VIA API ---")
         exito = False
         intentos = 0
         
-        # 2. MEZCLAMOS LAS IDENTIDADES PARA CADA PÁGINA
-        random.shuffle(identidades) 
-
-        while not exito and intentos < 7: 
+        # --- 2. SELECCIÓN FORZADA DE DIVERSIDAD (Mínimo 2 de cada uno) ---
+        # Elegimos muestras aleatorias sin repetir dentro del mismo grupo
+        safaris_elegidos = random.sample(safaris, 2)
+        chromes_elegidos = random.sample(chromes, 2)
+        edges_elegidos = random.sample(edges, 2)
+        
+        # Juntamos los 6 disfraces elegidos (2 + 2 + 2 = 6)
+        identidades_pagina = safaris_elegidos + chromes_elegidos + edges_elegidos
+        
+        # Los mezclamos entre sí para que el orden de ejecución varíe en cada página
+        random.shuffle(identidades_pagina)
+        
+        # Permitimos hasta 6 intentos para poder exprimir los 6 disfraces si hace falta
+        while not exito and intentos < 6: 
             url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fsort%3Ddiscount%26page%3D{page}' 
             
             try:
-                identidad_actual = identidades[intentos % len(identidades)]
+                identidad_actual = identidades_pagina[intentos]
                 print(f"🕵️ Intentando conexión (Identidad: {identidad_actual})...")
                 
                 repuesta = requests.get(
                     url_api_change,
                     impersonate=identidad_actual, 
-                    headers=cabeceras_tienda, # Usa el diccionario fijo de arriba
+                    headers=cabeceras_tienda,
                     timeout=15 
                 )
 
@@ -69,10 +60,7 @@ def extraer_datos_pccom_api():
                     lista_articles = date.get('dynamicData', {}).get('articles', [])
                     
                     for producto in lista_articles:
-                        # 1. Le inyectamos la fecha actual al diccionario original 
                         producto['Fecha_Extraccion'] = time.strftime("%Y-%m-%d %H:%M:%S")
-                        
-                        # 2. Añadimos el producto COMPLETO a nuestra bolsa
                         bag_products.append(producto)
                     
                     print(f"✅ ¡Éxito! Extraídos {len(lista_articles)} productos de la página {page}.")
@@ -80,7 +68,6 @@ def extraer_datos_pccom_api():
                 else:
                     print(f"⚠️ Código {repuesta.status_code}. Reintentando...")
                     intentos += 1
-                    # Pausa aleatoria humana entre reintentos fallidos para despistar
                     tiempo_reintento = random.uniform(4.0, 8.0)
                     time.sleep(tiempo_reintento)
             
@@ -89,7 +76,7 @@ def extraer_datos_pccom_api():
                 intentos += 1
                 time.sleep(6)
 
-        # 3. PAUSA ALEATORIA ENTRE PÁGINAS (Corregida para las 100 páginas)
+        # 3. PAUSA ALEATORIA ENTRE PÁGINAS
         if page < 100:
             tiempo_espera = random.randint(8, 15)
             print(f"⏳ Descansando {tiempo_espera} segundos para enfriar la IP...")
