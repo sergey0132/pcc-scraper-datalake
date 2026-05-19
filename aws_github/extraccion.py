@@ -6,14 +6,6 @@ import random
 import boto3 # Necesario para conectarse a S3
 
 
-import os
-import time
-from curl_cffi import requests
-import pandas as pd
-import random
-import boto3 # Necesario para conectarse a S3
-
-
 def extraer_datos_pccom_api():
     bag_products = []
     
