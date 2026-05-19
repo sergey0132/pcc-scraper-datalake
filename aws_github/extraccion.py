@@ -23,9 +23,9 @@ def extraer_datos_pccom_api():
         
         # 2. MEZCLAMOS LAS IDENTIDADES PARA CADA PÁGINA
         random.shuffle(identidades) 
-
+#https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Faniversario%3Fsort%3Ddiscount%26page%3D{page}
         while not exito and intentos < 4: 
-            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Faniversario%3Fsort%3Ddiscount%26page%3D{page}'
+            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fsort%3Ddiscount%26page%3D{page}' 
             
             cabeceras_tienda = {
                 "x-selected-language": "es",
