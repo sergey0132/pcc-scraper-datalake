@@ -6,6 +6,14 @@ import random
 import boto3 # Necesario para conectarse a S3
 
 
+import os
+import time
+from curl_cffi import requests
+import pandas as pd
+import random
+import boto3 # Necesario para conectarse a S3
+
+
 def extraer_datos_pccom_api():
     bag_products = []
     
@@ -15,6 +23,17 @@ def extraer_datos_pccom_api():
         "edge101", "edge99", 
         "safari17_0", "safari15_5"
     ]
+    
+    # ⚡ OPTIMIZACIÓN: Sacamos las cabeceras fijas fuera de todos los bucles
+    # Eliminamos la línea del User-Agent para que curl_cffi lo ponga dinámicamente
+    cabeceras_tienda = {
+        "x-selected-language": "es",
+        "x-channel": "e24bd484-e84d-4051-8c51-551bf17a0610",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.pccomponentes.com/aniversario",
+        "Origin": "https://www.pccomponentes.com",
+    }
+    
     # Añado mas paginas para tener mas productos de cada categoria 
     for page in range(1, 101):
         print(f"\n--- 📄 EXTRAYENDO PÁGINA {page} VIA API ---")
@@ -23,19 +42,10 @@ def extraer_datos_pccom_api():
         
         # 2. MEZCLAMOS LAS IDENTIDADES PARA CADA PÁGINA
         random.shuffle(identidades) 
-#https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Faniversario%3Fsort%3Ddiscount%26page%3D{page}
+
         while not exito and intentos < 4: 
             url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fsort%3Ddiscount%26page%3D{page}' 
             
-            cabeceras_tienda = {
-                "x-selected-language": "es",
-                "x-channel": "e24bd484-e84d-4051-8c51-551bf17a0610",
-                "Accept": "application/json, text/plain, */*",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Referer": "https://www.pccomponentes.com/aniversario",
-                "Origin": "https://www.pccomponentes.com",
-            }
-
             try:
                 identidad_actual = identidades[intentos % len(identidades)]
                 print(f"🕵️ Intentando conexión (Identidad: {identidad_actual})...")
@@ -43,7 +53,7 @@ def extraer_datos_pccom_api():
                 repuesta = requests.get(
                     url_api_change,
                     impersonate=identidad_actual, 
-                    headers=cabeceras_tienda,
+                    headers=cabeceras_tienda, # Usa el diccionario fijo de arriba
                     timeout=15 
                 )
 
@@ -53,7 +63,6 @@ def extraer_datos_pccom_api():
                     
                     for producto in lista_articles:
                         # 1. Le inyectamos la fecha actual al diccionario original 
-                        # (Esto es vital para saber cuándo sacamos la foto a los datos)
                         producto['Fecha_Extraccion'] = time.strftime("%Y-%m-%d %H:%M:%S")
                         
                         # 2. Añadimos el producto COMPLETO a nuestra bolsa
@@ -64,16 +73,17 @@ def extraer_datos_pccom_api():
                 else:
                     print(f"⚠️ Código {repuesta.status_code}. Reintentando...")
                     intentos += 1
-                    time.sleep(6) # Pausa corta entre reintentos fallidos
+                    # Pausa aleatoria humana entre reintentos fallidos para despistar
+                    tiempo_reintento = random.uniform(4.0, 8.0)
+                    time.sleep(tiempo_reintento)
             
             except Exception as e:
                 print(f"❌ Error en la conexión: {e}")
                 intentos += 1
                 time.sleep(6)
 
-        # 3. PAUSA ALEATORIA ENTRE PÁGINAS (Para engañar a Cloudflare)
-        # Solo hacemos la pausa si no es la última página
-        if page < 5:
+        # 3. PAUSA ALEATORIA ENTRE PÁGINAS (Corregida para las 100 páginas)
+        if page < 100:
             tiempo_espera = random.randint(8, 15)
             print(f"⏳ Descansando {tiempo_espera} segundos para enfriar la IP...")
             time.sleep(tiempo_espera)
