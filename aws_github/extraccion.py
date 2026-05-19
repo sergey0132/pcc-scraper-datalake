@@ -9,11 +9,19 @@ import boto3 # Necesario para conectarse a S3
 def extraer_datos_pccom_api():
     bag_products = []
     
-    # 1. EL GRAN ARMARIO DE DISFRACES (Chrome, Edge y Safari)
+# 1. EL GRAN ARMARIO DE DISFRACES ACTUALIZADO (Con refuerzo de Safari y Móviles)
     identidades = [
-        "chrome120", "chrome119", "chrome116", 
-        "edge101", "edge99", 
-        "safari17_0", "safari15_5"
+        # --- Los pases VIP (Safari Escritorio) ---
+        "safari17_0", "safari15_5", 
+        "safari16_0", "safari18_0",
+        
+        # --- El armamento pesado (Chrome y Edge actualizados) ---
+        "chrome120", "chrome119", "chrome116",
+        "edge101", "edge99",
+        
+        # --- Infantería Ligera (Identidades Móviles - Rompen bloqueos IP muy bien) ---
+        "ios17_0", "ios16_5",       # Safari en iPhone
+        "android12_0", "chrome115_mobile" # Chrome en Android
     ]
     
     # ⚡ OPTIMIZACIÓN: Sacamos las cabeceras fijas fuera de todos los bucles
@@ -35,7 +43,7 @@ def extraer_datos_pccom_api():
         # 2. MEZCLAMOS LAS IDENTIDADES PARA CADA PÁGINA
         random.shuffle(identidades) 
 
-        while not exito and intentos < 4: 
+        while not exito and intentos < 6: 
             url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fsort%3Ddiscount%26page%3D{page}' 
             
             try:
