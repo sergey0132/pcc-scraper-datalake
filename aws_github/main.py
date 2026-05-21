@@ -6,49 +6,35 @@ import os
 
 
 if __name__ == "__main__":
-    # Mensaje de inicio para los logs de GitHub Actions
-    print("🚀 Iniciando el proceso completo Multi-Tienda...")
+    print("🚀 Iniciando Pipeline ETL de Coolmod en Entorno Producción...")
     
-    # --- 1. FASE DE EXTRACCIÓN (Ingesta) ---
-    # Llamamos a la función de PcComponentes y guardamos su lista de diccionarios
-    lista_products_pccomponentes = extraer_datos_pccom_api()
-    print(f"DEBUG: PcComponentes me ha dado {len(lista_products_pccomponentes)} productos.")
+    # 1. Extracción
+    datos = extraer_datos_coolmod_produccion()
     
-    # Llamamos a la función de Coolmod y guardamos su li
-    lista_productos_coolmod = extraer_datos_coolmod_produccion()
-    print(f"DEBUG: Coolmod me ha dado {len(lista_productos_coolmod)} productos.")
-    
-    # Fusionamos ambas listas con el operador +. Si una tienda falla y devuelve [], no rompe nada.
-    bolsa_total = lista_products_pccomponentes + lista_productos_coolmod
-    
-    # Comprobamos si, al menos, una de las dos tiendas ha devuelto productos
-    if bolsa_total:
-        # --- 2. FASE DE TRANSFORMACIÓN (Capa Bronze/Silver) ---
-        # Pasamos la super-lista unificada a Pandas para crear una única tabla (DataFrame)
-        df = pd.DataFrame(bolsa_total)
+    # 2. Validación temprana
+    if not datos:
+        print("\n❌ Error Crítico: No se han extraído datos. El proceso se detiene aquí.")
+        exit(1) # Finaliza el script con código de error para que GitHub Actions lo detecte
         
-        # --- 3. FASE DE ESCRITURA LOCAL (Almacenamiento Temporal) ---
-        # Generamos un nombre dinámico para el archivo usando la fecha y hora exactas
-        # Le cambiamos el nombre a 'chollos_unificados' para reflejar que hay 2 tiendas
-        filename = f"chollos_unificados_{time.strftime('%Y%m%d_%H%M%S')}.csv"
+    # 3. Transformación y Limpieza
+    try:
+        df = pd.DataFrame(datos)
         
-        # Guardamos la tabla en el disco duro virtual de GitHub Actions en formato CSV
-        df.to_csv(filename, index=False, encoding='utf-8')
-        print(f"📦 Archivo local '{filename}' generado con {len(df)} productos totales.")
+        # Eliminar filas donde el 'Nombre' sea nulo (esto limpia los "productos fantasma")
+        df = df.dropna(subset=['Nombre'])
         
-        # --- 4. FASE DE CARGA EN LA NUBE (Upload a AWS S3) ---
-        # Leemos el nombre secreto de tu bucket desde las variables de entorno de GitHub
-        bucket = os.getenv('MY_S3_BUCKET')
-        
-        # Comprobación de seguridad: Verificamos que el Secret se leyó correctamente
-        if bucket:
-            # Llamamos a tu función de subida pasando el archivo, el bucket y la carpeta "bronze"
-            subir_a_s3(filename, bucket, "bronze")
-            print(f"🏁 ¡Pipeline Completado! {len(df)} datos inyectados en S3 con éxito.")
-        else:
-            # Si el entorno no encuentra la variable, lo avisamos para no volvernos locos buscando el error
-            print("❌ Error Crítico: No se encontró la variable de entorno 'MY_S3_BUCKET' en GitHub Secrets.")
+        # Asegurar que la columna Tienda exista (por si acaso)
+        if 'Tienda' not in df.columns:
+            df['Tienda'] = 'Coolmod'
             
-    else:
-        # Si ambas funciones fallaron y las listas están vacías, terminamos el script en paz
-        print("⚠️ No se obtuvieron datos de ninguna de las dos tiendas en esta ejecución.")
+        print(f"\n📊 TOTAL DE PRODUCTOS LIMPIOS: {len(df)}")
+        
+        # 4. Carga
+        nombre_archivo = "chollos_coolmod_produccion.csv"
+        df.to_csv(nombre_archivo, index=False, encoding='utf-8')
+        
+        print(f"\n💾 ¡Datos generados correctamente! Archivo '{nombre_archivo}' listo.")
+        
+    except Exception as e:
+        print(f"\n❌ Error durante el procesamiento o guardado: {e}")
+        exit(1)
