@@ -92,7 +92,6 @@ def extraer_datos_pccom_api():
 def extraer_datos_coolmod_produccion():
     bag_products = []
     
-    # --- 1. EL ARMARIO DE ORO (Idéntico al de PcComponentes) ---
     safaris = ["safari15_5", "safari17_0", "safari18_0"]
     chromes = ["chrome120", "chrome119", "chrome116"]
     edges = ["edge101", "edge99"]
@@ -103,20 +102,17 @@ def extraer_datos_coolmod_produccion():
         "Referer": "https://www.coolmod.com/",
     }
     
-    # 20 páginas, mismo bucle que tu extractor exitoso
     for page in range(1, 21):
         print(f"\n--- 🧊 EXTRAYENDO COOLMOD - PÁGINA {page}/20 ---")
         exito = False
         intentos = 0
         
-        # Mismas identidades que en PcComponentes para consistencia
         safaris_elegidos = random.sample(safaris, 2)
         chromes_elegidos = random.sample(chromes, 2)
         edges_elegidos = random.sample(edges, 2)
         identidades_pagina = safaris_elegidos + chromes_elegidos + edges_elegidos
         random.shuffle(identidades_pagina)
         
-        # Bucle de reintentos blindado
         while not exito and intentos < 6:
             url_publica = f'https://www.coolmod.com/descuentos/?ordenacion=descuento&pagina={page}'
             
@@ -124,60 +120,88 @@ def extraer_datos_coolmod_produccion():
                 identidad_actual = identidades_pagina[intentos]
                 print(f"🕵️ Intentando conexión (Identidad: {identidad_actual})...")
                 
-                repuesta_html = requests.get(url_publica, impersonate=identidad_actual, headers=cabeceras_html, timeout=15)
-
-                if repuesta_html.status_code == 200:
-                    html_recibido = repuesta_html.text
-                    codigos_encontrados = re.findall(r'PROD-\d+', html_recibido)
-                    codigos_unicos = list(set(codigos_encontrados))
-                    
-                    if not codigos_unicos:
-                        print("⚠️ No se encontraron productos. Saltando página.")
-                        exito = True # Marcamos éxito para avanzar a la siguiente página
-                        continue
-                        
-                    # Ataque al JSON
-                    codigos_formateados = ",".join([f"%22{c}%22" for c in codigos_unicos])
-                    url_json = f"https://www.coolmod.com/view_v2/ajax/category/newAjaxPricesForProductsWithCode.php?productCodes=[{codigos_formateados}]&DayId=PM&ZoneCode=PENINSULA&VatId=NV&TarId=1"
-                    
-                    cabeceras_ajax = {
-                        "Accept": "application/json, text/javascript, */*; q=0.01",
-                        "X-Requested-With": "XMLHttpRequest",
-                        "Referer": url_publica
-                    }
-                    
-                    repuesta_json = requests.get(url_json, impersonate=identidad_actual, headers=cabeceras_ajax, timeout=15)
-                    lista_productos = repuesta_json.json()
-                    
-                    if isinstance(lista_productos, list):
-                        for prod in lista_productos:
-                            prod['Fecha_Extraccion'] = time.strftime("%Y-%m-%d %H:%M:%S")
-                            prod['Tienda'] = 'Coolmod'
-                            bag_products.append(prod)
-                        
-                        print(f"✅ ¡Éxito! Extraídos {len(lista_productos)} productos de la página {page}.")
-                        exito = True
-                    else:
-                        print(f"⚠️ Bloqueo detectado (Código 403 o similar).")
-                        intentos += 1
-                        time.sleep(random.uniform(4, 8))
-                
-                else:
-                    print(f"⚠️ Código {repuesta_html.status_code}. Reintentando...")
+                repuesta_html = requests.get(
+                    url_publica,
+                    impersonate=identidad_actual,
+                    headers=cabeceras_html,
+                    timeout=15
+                )
+ 
+                if repuesta_html.status_code != 200:
+                    print(f"⚠️ Código {repuesta_html.status_code} en HTML. Reintentando...")
                     intentos += 1
                     time.sleep(random.uniform(4, 8))
+                    continue  # ← Vuelve al while correctamente
+ 
+                html_recibido = repuesta_html.text
+                codigos_encontrados = re.findall(r'PROD-\d+', html_recibido)
+                codigos_unicos = list(set(codigos_encontrados))
+                
+                # BUG 1 CORREGIDO: break en vez de continue
+                if not codigos_unicos:
+                    print("⚠️ No se encontraron productos en esta página. Saltando.")
+                    exito = True
+                    break  # ← Sale del while y avanza al siguiente for
+                
+                codigos_formateados = ",".join([f"%22{c}%22" for c in codigos_unicos])
+                url_json = (
+                    f"https://www.coolmod.com/view_v2/ajax/category/"
+                    f"newAjaxPricesForProductsWithCode.php"
+                    f"?productCodes=[{codigos_formateados}]"
+                    f"&DayId=PM&ZoneCode=PENINSULA&VatId=NV&TarId=1"
+                )
+                
+                cabeceras_ajax = {
+                    "Accept": "application/json, text/javascript, */*; q=0.01",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "Referer": url_publica
+                }
+                
+                # BUG 2 CORREGIDO: try/except propio para la segunda petición
+                try:
+                    repuesta_json = requests.get(
+                        url_json,
+                        impersonate=identidad_actual,
+                        headers=cabeceras_ajax,
+                        timeout=15
+                    )
+                    repuesta_json.raise_for_status()  # Lanza excepción si no es 200
+                    lista_productos = repuesta_json.json()
+                except Exception as e:
+                    print(f"❌ Error en petición JSON de precios: {e}")
+                    intentos += 1
+                    time.sleep(random.uniform(4, 8))
+                    continue  # ← Reintenta con otra identidad
+                
+                if isinstance(lista_productos, list) and len(lista_productos) > 0:
+                    for prod in lista_productos:
+                        prod['Fecha_Extraccion'] = time.strftime("%Y-%m-%d %H:%M:%S")
+                        prod['Tienda'] = 'Coolmod'
+                        bag_products.append(prod)
+                    
+                    print(f"✅ ¡Éxito! Extraídos {len(lista_productos)} productos de la página {page}.")
+                    exito = True
+                    # BUG 3 CORREGIDO: break explícito para salir del while
+                    break
+                else:
+                    print(f"⚠️ JSON vacío o bloqueado. Reintentando...")
+                    intentos += 1
+                    time.sleep(random.uniform(4, 8))
+                    continue  # ← Reintenta con otra identidad
             
             except Exception as e:
-                print(f"❌ Error en la conexión: {e}")
+                print(f"❌ Error general en la conexión: {e}")
                 intentos += 1
                 time.sleep(6)
-
-        # Pausa entre páginas igual a la de PcComponentes
+ 
+        if not exito:
+            print(f"❌ Página {page} falló después de {intentos} intentos. Continuando...")
+ 
         if page < 20:
             tiempo_espera = random.randint(8, 15)
             print(f"⏳ Descansando {tiempo_espera} segundos para enfriar la IP...")
             time.sleep(tiempo_espera)
-
+ 
     return bag_products
 # ==========================================
 # BLOQUE DE EJECUCIÓN DEL SCRIPT
