@@ -1,6 +1,6 @@
 import time
 import pandas as pd
-from extraccion import extraer_datos_pccom_api
+from extraccion import extraer_datos_pccom_api, extraer_datos_coolmod_produccion
 from subir_s3 import subir_a_s3
 import os
 
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     # Llamamos a la función de PcComponentes y guardamos su lista de diccionarios
     lista_products_pccomponentes = extraer_datos_pccom_api()
     # Llamamos a la función de Coolmod y guardamos su li
-    lista_productos_coolmod = extraer_datos_coolmod_api()
+    lista_productos_coolmod = extraer_datos_coolmod_produccion()
     
     # Fusionamos ambas listas con el operador +. Si una tienda falla y devuelve [], no rompe nada.
     bolsa_total = lista_products_pccomponentes + lista_productos_coolmod
