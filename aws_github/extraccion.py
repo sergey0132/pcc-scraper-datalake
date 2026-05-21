@@ -9,10 +9,14 @@ import boto3 # Necesario para conectarse a S3
 def extraer_datos_pccom_api():
     bag_products = []
     
-    # --- 1. EL ALMACÉN CLASIFICADO DE DISFRACES ---
+    # --- 1. EL ARMARIO DE ORO (Configuración de Identidades) ---
+    # Lista de versiones de Safari estables para el entorno Linux de GitHub Actions
     safaris = ["safari15_5", "safari17_0", "safari18_0"]
-    chromes = ["chrome124", "chrome120", "chrome119", "chrome117", "chrome114", "chrome110"]
-    edges = ["edge120", "edge114", "edge101", "edge99"]
+    # Lista de versiones de Chrome que sabemos que no dan el error 'not supported'
+    chromes = ["chrome120", "chrome119", "chrome116"]
+    # Lista de versiones de Edge compatibles
+    edges = ["edge101", "edge99"]
+
     
     # Cabeceras fijas fuera de los bucles (sin User-Agent)
     cabeceras_tienda = {
@@ -23,7 +27,7 @@ def extraer_datos_pccom_api():
         "Origin": "https://www.pccomponentes.com",
     }
     
-    for page in range(1, 101):
+    for page in range(1, 26):
         print(f"\n--- 📄 EXTRAYENDO PÁGINA {page} VIA API ---")
         exito = False
         intentos = 0
@@ -77,7 +81,7 @@ def extraer_datos_pccom_api():
                 time.sleep(6)
 
         # 3. PAUSA ALEATORIA ENTRE PÁGINAS
-        if page < 100:
+        if page < 25:
             tiempo_espera = random.randint(8, 15)
             print(f"⏳ Descansando {tiempo_espera} segundos para enfriar la IP...")
             time.sleep(tiempo_espera)
