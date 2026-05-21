@@ -12,8 +12,11 @@ if __name__ == "__main__":
     # --- 1. FASE DE EXTRACCIÓN (Ingesta) ---
     # Llamamos a la función de PcComponentes y guardamos su lista de diccionarios
     lista_products_pccomponentes = extraer_datos_pccom_api()
+    print(f"DEBUG: PcComponentes me ha dado {len(lista_products_pccomponentes)} productos.")
+    
     # Llamamos a la función de Coolmod y guardamos su li
     lista_productos_coolmod = extraer_datos_coolmod_produccion()
+    print(f"DEBUG: Coolmod me ha dado {len(lista_productos_coolmod)} productos.")
     
     # Fusionamos ambas listas con el operador +. Si una tienda falla y devuelve [], no rompe nada.
     bolsa_total = lista_products_pccomponentes + lista_productos_coolmod
