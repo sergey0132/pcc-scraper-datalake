@@ -1,0 +1,36 @@
+name: Red Computer Bronze Scraper
+
+on:
+  schedule:
+    # 10:10 AM todos los días (30 minutos después de PcComponentes)
+    - cron: '10 10 * * *'
+  workflow_dispatch:
+
+jobs:
+  scraper-job:
+    runs-on: ubuntu-latest
+    
+    # Forzamos a que trabaje dentro de tu carpeta
+    defaults:
+      run:
+        working-directory: aws_github
+
+    steps:
+      - name: Descargar el código del repo
+        uses: actions/checkout@v3
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Instalar librerías
+        run: pip install -r requirements.txt
+
+      - name: 🚀 Ejecutar Scraper Ninja Red Computer
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_2 }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_2 }}
+          MY_S3_BUCKET: ${{ secrets.MY_S3_BUCKET }}
+        # ⚠️ IMPORTANTE: Asegúrate de que este sea el nombre exacto de tu script
+        run: python scraper_redcomputer.py
