@@ -193,37 +193,37 @@ def extraer_datos_redcomputer_api():
     return bag_products
 
 
-# # ==========================================
-# # BLOQUE DE EJECUCIÓN DEL SCRIPT
-# # ==========================================
-# # Comprueba si este archivo se está ejecutando directamente como programa principal
-# if __name__ == "__main__":
-#     # Imprimimos aviso de inicio de programa
-#     print("🚀 Iniciando Pipeline ETL de Coolmod en Entorno Producción...")
+# ==========================================
+# BLOQUE DE EJECUCIÓN DEL SCRIPT
+# ==========================================
+# Comprueba si este archivo se está ejecutando directamente como programa principal
+if __name__ == "__main__":
+    # Imprimimos aviso de inicio de programa
+    print("🚀 Iniciando Pipeline ETL de Coolmod en Entorno Producción...")
     
-#     # Ejecutamos toda la función de arriba y guardamos el resultado devuelto en la variable 'datos'
-#     datos = extraer_datos_coolmod_produccion()
+    # Ejecutamos toda la función de arriba y guardamos el resultado devuelto en la variable 'datos'
+    datos = extraer_datos_coolmod_produccion()
     
-#     # Comprobamos si la variable 'datos' contiene información (es decir, no está vacía)
-#     if datos:
-#         # Usamos la librería Pandas para convertir nuestra lista de diccionarios en un DataFrame (Tabla)
-#         df = pd.DataFrame(datos)
+    # Comprobamos si la variable 'datos' contiene información (es decir, no está vacía)
+    if datos:
+        # Usamos la librería Pandas para convertir nuestra lista de diccionarios en un DataFrame (Tabla)
+        df = pd.DataFrame(datos)
         
-#         # Mostramos un resumen con la cantidad total de filas extraídas
-#         print(f"\n📊 TOTAL DE PRODUCTOS EXTRAÍDOS: {len(df)}")
+        # Mostramos un resumen con la cantidad total de filas extraídas
+        print(f"\n📊 TOTAL DE PRODUCTOS EXTRAÍDOS: {len(df)}")
         
-#         # 🚨 CAMBIO VITAL: Guardamos en el mismo directorio (carpeta) donde se ejecuta el archivo. Vital para GitHub.
-#         nombre_archivo = "chollos_coolmod_produccion.csv"
+        # 🚨 CAMBIO VITAL: Guardamos en el mismo directorio (carpeta) donde se ejecuta el archivo. Vital para GitHub.
+        nombre_archivo = "chollos_coolmod_produccion.csv"
         
-#         # Ordenamos a Pandas que genere un archivo CSV. index=False evita guardar la columna de números de fila. encoding asegura los acentos.
-#         df.to_csv(nombre_archivo, index=False, encoding='utf-8')
+        # Ordenamos a Pandas que genere un archivo CSV. index=False evita guardar la columna de números de fila. encoding asegura los acentos.
+        df.to_csv(nombre_archivo, index=False, encoding='utf-8')
         
-#         # Confirmamos que el archivo se ha escrito en disco correctamente
-#         print(f"\n💾 ¡Datos generados! Archivo '{nombre_archivo}' listo para el siguiente paso del pipeline.")
+        # Confirmamos que el archivo se ha escrito en disco correctamente
+        print(f"\n💾 ¡Datos generados! Archivo '{nombre_archivo}' listo para el siguiente paso del pipeline.")
         
-#     # Si la variable 'datos' llegó vacía (hubo un problema técnico insalvable o cero productos)
-#     else:
-#         # Avisamos de que el programa finalizó pero no generó base de datos
-#         print("\n❌ Error Crítico: No se han extraído datos.")
+    # Si la variable 'datos' llegó vacía (hubo un problema técnico insalvable o cero productos)
+    else:
+        # Avisamos de que el programa finalizó pero no generó base de datos
+        print("\n❌ Error Crítico: No se han extraído datos.")
 
 
