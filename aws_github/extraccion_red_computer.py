@@ -47,6 +47,19 @@ def estandarizar_categoria(texto_sucio):
     if 'router' in texto or 'wifi' in texto or 'punto de acceso' in texto or 'red' in texto: return 'Redes y Routers'
     if 'smartwatch' in texto or 'reloj' in texto or 'pulsera' in texto: return 'Smartwatches'
     if 'sistema' in texto or 'windows' in texto or 'so' in texto: return 'Sistemas'
+
+
+    # 6. TV, Imagen y Telefonía
+    if 'tv' in texto or 'televisor' in texto or 'televisión' in texto or 'television' in texto: return 'Televisores'
+    if 'móvil' in texto or 'movil' in texto or 'smartphone' in texto or 'iphone' in texto: return 'Smartphone/Móviles'
+    if 'tablet' in texto or 'ipad' in texto: return 'Tablets'
+    
+    # 7. Hogar y Electrodomésticos (Ya que vimos que extraía lavadoras y cafeteras)
+    if 'lavadora' in texto: return 'Lavadoras'
+    if 'frigorífico' in texto or 'frigorifico' in texto or 'nevera' in texto: return 'Frigoríficos'
+    if 'cafetera' in texto: return 'Cafeteras'
+    if 'aspirador' in texto or 'roomba' in texto or 'conga' in texto: return 'Robot Aspirador'
+    if 'aire acondicionado' in texto or 'climatizador' in texto: return 'Aire Acondicionado'
     
     # EL SALVAVIDAS DINÁMICO (Limpiando comas y barras)
     texto_limpio = str(texto_sucio).replace(',', '').replace('/', ' ')
