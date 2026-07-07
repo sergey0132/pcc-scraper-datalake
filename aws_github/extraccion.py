@@ -46,7 +46,7 @@ def extraer_datos_pccom_api():
         
         # Permitimos hasta 6 intentos para poder exprimir los 6 disfraces si hace falta
         while not exito and intentos < 6: 
-            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fofertas-especiales%3Fsort%3Ddiscount%26page%3D{page}' 
+            url_api_change = f'https://www.pccomponentes.com/api/dynamic-view?url=https%3A%2F%2Fwww.pccomponentes.com%2Fpcdays%3Fsort%3Ddiscount%26page%3D{page}}' 
             
             try:
                 identidad_actual = identidades_pagina[intentos]
