@@ -57,9 +57,15 @@ def extraer_datos_pccom_api():
                 identidad_actual = identidades_pagina[intentos]
                 print(f"🕵️ Intentando conexión (Identidad: {identidad_actual})...")
                 
-                repuesta = requests.get(
+                # 1. Iniciamos sesión con el disfraz de curl_cffi
+                sesion = requests.Session(impersonate=identidad_actual)
+                
+                # 2. Simulamos entrar a la web normal primero para que Cloudflare nos dé la cookie
+                sesion.get("https://www.pccomponentes.com/campanas/ofertas-especiales", headers=cabeceras_tienda, timeout=15)
+                
+                # 3. Hacemos la llamada real a la API usando esa misma sesión
+                repuesta = sesion.get(
                     url_api_change,
-                    impersonate=identidad_actual, 
                     headers=cabeceras_tienda,
                     timeout=15 
                 )
