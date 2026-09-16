@@ -20,13 +20,16 @@ def extraer_datos_pccom_api():
     
     # Cabeceras fijas fuera de los bucles (sin User-Agent)
     cabeceras_tienda = {
-        "x-selected-language": "es",
-        "x-channel": "e24bd484-e84d-4051-8c51-551bf17a0610",
         "Accept": "application/json, text/plain, */*",
-        "Referer": "https://www.pccomponentes.com/aniversario",
-        "Origin": "https://www.pccomponentes.com",
+        "Referer": "https://www.pccomponentes.com/campanas/ofertas-especiales",
+        "x-channel": "e24bd484-e84d-4051-8c51-551bf17a0610",
+        "x-host": "www.pccomponentes.com",
+        "x-selected-language": "es-ES",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin"
     }
-    
+
     for page in range(1, 26):
         print(f"\n--- 📄 EXTRAYENDO PÁGINA {page} VIA API ---")
         exito = False
